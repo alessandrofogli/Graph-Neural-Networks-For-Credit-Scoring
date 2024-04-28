@@ -1,1 +1,7 @@
-WOE_GCNN.ipynb
+__pycache__/
+*.pyc
+*.png
+*.DS_Store
+*.pt
+*.pkl
+
