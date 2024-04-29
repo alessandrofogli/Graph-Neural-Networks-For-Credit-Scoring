@@ -5,8 +5,8 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
-from train import train
-from evaluate import evaluate
+from .train import train
+from .evaluate import evaluate
 
 
 
