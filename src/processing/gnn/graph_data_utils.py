@@ -5,6 +5,14 @@ import numpy as np
 import os
 from sklearn.neighbors import NearestNeighbors
 import torch
+import random
+from torch_geometric.utils import dropout_adj, convert
+from setup import seed
+
+random.seed(seed)
+np.random.seed(seed)
+torch.manual_seed(seed)
+torch.cuda.manual_seed(seed)
 
 
 def build_relationship(x, thresh=0.25):
@@ -14,8 +22,6 @@ def build_relationship(x, thresh=0.25):
     for ind in range(df_euclid.shape[0]):
         max_sim = np.sort(df_euclid[ind, :])[-2]
         neig_id = np.where(df_euclid[ind, :] > thresh*max_sim)[0]
-        import random
-        random.seed(912)
         random.shuffle(neig_id)
         for neig in neig_id:
             if neig != ind:
@@ -72,8 +78,6 @@ def load_heloc(dataset, predict_attr, path):
     features = torch.FloatTensor(np.array(features.todense()))
     labels = torch.LongTensor(labels)
 
-    import random
-    random.seed(62)
     label_idx_0 = np.where(labels==0)[0]
     label_idx_1 = np.where(labels==1)[0]
     random.shuffle(label_idx_0)
@@ -96,7 +100,6 @@ def load_heloc(dataset, predict_attr, path):
     idx_test = np.concatenate((idx_test_0, idx_test_1))
 
     # Shuffle final train and test sets
-    random.seed(20)
     random.shuffle(idx_train)
     random.shuffle(idx_test)
 

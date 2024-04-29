@@ -74,8 +74,11 @@ Exploring-the-potential-of-Graph-Neural-Networks-for-Credit-Scoring/
 │   ├── main.py              # Main script to run models
 │   ├── config.py            # Configuration settings for the project
 │   ├── preprocessing/
-│   │   ├── __init__.py
-│   │   └── preprocess.py   # Preprocessing utilities
+│   │   ├── gnn/
+│   │   │   └── graph_data_utils.py   # Preprocessing utilities
+│   │   └── logistic_regression/
+│   │       ├── correlation_feature_selector.py   # select uncorrelated features based on Gini
+│   │       └── woe_processing.py   # WeightOfEvidence trasnformation
 │   ├── training/
 │   │   ├── __init__.py
 │   │   ├── train.py
@@ -90,15 +93,6 @@ Exploring-the-potential-of-Graph-Neural-Networks-for-Credit-Scoring/
 │
 ├── notebooks/
 │   └── exploratory_analysis.ipynb  # Jupyter notebook for exploration and testing
-│
-├── tests/
-│   ├── __init__.py
-│   ├── test_preprocessing.py
-│   ├── test_training.py
-│   └── test_models.py
-│
-├── docs/
-│   └── project_documentation.md
 │
 ├── requirements.txt
 ├── .gitignore
