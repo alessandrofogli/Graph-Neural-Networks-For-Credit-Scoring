@@ -5,6 +5,8 @@ import numpy as np
 import os
 from sklearn.neighbors import NearestNeighbors
 import torch
+from torch_geometric.utils import dropout_adj, convert
+
 
 
 def build_relationship(x, thresh=0.25):
