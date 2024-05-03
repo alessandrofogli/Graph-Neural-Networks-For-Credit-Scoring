@@ -75,31 +75,26 @@ def retrieve_model(architecture):
 
     return best_params
 
-def evaluate_saved_model(architecture, features, adj, labels, idx_test, num_class, best_params, device, plot_loss=False):
-    print(f"Initializing the model with parameters: {best_params}")
+def evaluate_saved_model(architecture, features, adj, labels, idx_test, num_class, device, plot_loss=False):
+    print(f"Loading model weights for architecture: {architecture}")
 
-    if not best_params:
-        print("Best parameters not found.")
-        return None
-
+    model_path = f'./models/weights/{architecture}_weights.pth'
     try:
-        model_path = f'./models/weights{architecture}_weights.pth'
         checkpoint = torch.load(model_path)
-        model = GIN(nfeat=features.shape[1], nhid=best_params['nhid'], nclass=num_class, dropout=best_params['dropout']).to(device)
+        config = checkpoint['config']
+        # Initialize the model using the saved configuration
+        model = GIN(nfeat=config['nfeat'], nhid=config['nhid'], nclass=config['nclass'], dropout=config['dropout']).to(device)
         model.load_state_dict(checkpoint['state_dict'])
         print("Model loaded successfully.")
-        
+
         if plot_loss:
-            train_losses = checkpoint['train_losses']
-            test_losses = checkpoint['test_losses']
-            plt.plot(train_losses, label='Training Loss', color='blue')
-            plt.plot(test_losses, label='Validation Loss', color='red')
+            plt.plot(checkpoint['train_losses'], label='Training Loss', color='blue')
+            plt.plot(checkpoint['test_losses'], label='Validation Loss', color='red')
             plt.xlabel('Epoch')
             plt.ylabel('Loss')
             plt.legend()
             plt.title("Loss over epochs")
             plt.show()
-
     except Exception as e:
         print(f"Failed to load the model with error: {e}")
         return None
@@ -126,7 +121,16 @@ if __name__ == "__main__":
     if args.mode == 'retrieve':
         best_params = retrieve_model('GIN')
         if best_params:
-            result = evaluate_saved_model('GIN', features, adj, labels, idx_test, num_class, best_params, device, plot_loss=True)
+            result = evaluate_saved_model(
+                architecture='GIN',
+                features=features,
+                adj=adj,
+                labels=labels,
+                idx_test=idx_test,
+                num_class=num_class,
+                device=device,
+                plot_loss=True
+            )
             if result:
                 auc_roc, f1_score = result
                 print(f'AUC-ROC: {auc_roc:.3f}, Gini: {(auc_roc*2-1):.3f}, F1-Score: {f1_score:.3f}')
