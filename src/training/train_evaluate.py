@@ -33,11 +33,16 @@ def train_and_evaluate(model, optimizer, features, edge_index, labels, idx_train
             best_auc = auc_roc_val
             save_path = f'./models/weights/{architecture}_weights.pth'
             torch.save({
-                'state_dict': model.state_dict(),
-                'train_losses': train_losses,
-                'test_losses': test_losses
-            }, save_path)
-        
+            'state_dict': model.state_dict(),
+            'config': {
+                'nhid': model.mlp1[0].out_features,
+                'dropout': model.dropout.p,
+                'nfeat': features.shape[1],
+                'nclass': 1
+            },
+            'train_losses': train_losses,
+            'test_losses': test_losses
+        }, save_path)
         # Update progress bar with loss information
         if epoch % 100 == 0:
             epoch_iterator.set_postfix({'Train Loss': f"{loss_train:.4f}", 'Val Loss': f"{loss_test:.4f}", 'Val AUC': f"{auc_roc_val:.4f}"})
