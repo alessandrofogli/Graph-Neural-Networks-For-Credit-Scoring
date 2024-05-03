@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from models.gin import GIN
 from src.processing.gnn.graph_data_utils import load_heloc
 from src.training.train_evaluate import train_and_evaluate
+from src.training.evaluate import evaluate
 
 def train_optimize_model(features, adj, labels, num_class, device, num_epochs=1500, n_splits=2):
     num_features = features.shape[1]
