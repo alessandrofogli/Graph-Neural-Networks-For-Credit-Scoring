@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import os
 from sklearn.neighbors import NearestNeighbors
+from sklearn.preprocessing import StandardScaler
 import torch
 import random
 from torch_geometric.utils import dropout_adj, convert
@@ -53,14 +54,18 @@ def load_heloc(dataset, predict_attr, path):
     header = list(idx_features_labels.columns)
     header.remove(predict_attr)
 
+    # Normalize features
+    scaler = StandardScaler()
+    features_scaled = scaler.fit_transform(idx_features_labels[header].values)
+
     # build relationship
     if os.path.exists(f'{path}/{dataset}_edges.txt'):
         edges_unordered = np.genfromtxt(f'{path}/{dataset}_edges.txt').astype('int')
     else:
-        edges_unordered = build_relationship_knn(idx_features_labels[header], k=6) #thresh=0.8
+        edges_unordered = build_relationship_knn(features_scaled, k=6) #thresh=0.8
         np.savetxt(f'{path}/{dataset}_edges.txt', edges_unordered)
 
-    features = sp.csr_matrix(idx_features_labels[header], dtype=np.float32) #without RiskPerformance
+    features = sp.csr_matrix(features_scaled, dtype=np.float32) #without RiskPerformance
     labels = idx_features_labels[predict_attr].values 
 
     idx = np.arange(features.shape[0])
