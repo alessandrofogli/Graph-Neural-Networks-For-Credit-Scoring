@@ -11,18 +11,30 @@ import statistics
 import matplotlib.pyplot as plt
 
 from models.gin import GIN
+from models.gcn import GCN  
+from models.gat import GAT
 from src.processing.gnn.graph_data_utils import load_heloc
 from src.training.train_evaluate import train_and_evaluate
 from src.training.evaluate import evaluate
 
-def train_optimize_model(features, adj, labels, num_class, device, num_epochs=1500, n_splits=2):
+def get_model(architecture, num_features, nhid, num_class, dropout, device):
+    if architecture == 'GIN':
+        return GIN(num_features, nhid, num_class, dropout).to(device)
+    elif architecture == 'GCN':
+        return GCN(num_features, nhid, num_class, dropout).to(device)
+    elif architecture == 'GAT':
+        return GAT(num_features, nhid, num_class, dropout).to(device)
+    else:
+        raise ValueError("Unsupported architecture specified")
+
+def train_optimize_model(architecture, features, adj, labels, num_class, device, num_epochs=1500, n_splits=2):
     num_features = features.shape[1]
     edge_index = convert.from_scipy_sparse_matrix(adj)[0].to(device)
     features = features.to(device)
     labels = labels.to(device)
 
     kf = KFold(n_splits=n_splits, shuffle=True)
-    study_name = "GIN_fico4_optimization_study"
+    study_name = f"{architecture}_fico_optimization_study"
     storage = f"./models/saved_scores/{study_name}.pkl"
 
     # Load or create a new study
@@ -42,9 +54,10 @@ def train_optimize_model(features, adj, labels, num_class, device, num_epochs=15
         lr = trial.suggest_float('lr', 1e-4, 1e-2)
         weight_decay = trial.suggest_float('weight_decay', 1e-6, 1e-2)
 
-        model = GIN(num_features, nhid, num_class, dropout).to(device)
+        model = get_model(architecture, num_features, nhid, num_class, dropout, device)
         optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
         auc_roc_test = train_and_evaluate(model, optimizer, features, edge_index, labels, idx_train, idx_test, device, num_epochs, model.__class__.__name__, tuning=True)
+        
         return auc_roc_test * 2 - 1  # Convert AUC to Gini
 
     # Perform optimization
@@ -105,9 +118,11 @@ def evaluate_saved_model(architecture, features, adj, labels, idx_test, num_clas
     
     return auc_roc_val, f1_val
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Train or retrieve GIN model.')
-    parser.add_argument('mode', choices=['train', 'retrieve'], help='Mode to execute')
+    parser = argparse.ArgumentParser(description='Train or retrieve GNN model.')
+    parser.add_argument('--mode', choices=['train', 'retrieve'], help='Mode to execute')
+    parser.add_argument('--arch', choices=['GIN', 'GCN', 'GAT'], help='Architecture to use')
     args = parser.parse_args()
 
     predict_attr = "RiskPerformance"
@@ -117,12 +132,12 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     if args.mode == 'train':
-        best_params = train_optimize_model(features, adj, labels, num_class, device)
-    if args.mode == 'retrieve':
-        best_params = retrieve_model('GIN')
+        best_params = train_optimize_model(args.arch, features, adj, labels, num_class, device)
+    elif args.mode == 'retrieve':
+        best_params = retrieve_model(args.arch)  # This function needs to be updated similarly to handle different architectures
         if best_params:
             result = evaluate_saved_model(
-                architecture='GIN',
+                architecture=args.arch,
                 features=features,
                 adj=adj,
                 labels=labels,
