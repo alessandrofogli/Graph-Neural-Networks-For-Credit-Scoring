@@ -17,13 +17,15 @@ from src.processing.gnn.graph_data_utils import load_heloc
 from src.training.train_evaluate import train_and_evaluate
 from src.training.evaluate import evaluate
 
-def get_model(architecture, num_features, nhid, num_class, dropout, device):
+def get_model(architecture, num_features, nhid, num_class, dropout, device, **kwargs):
     if architecture == 'GIN':
         return GIN(num_features, nhid, num_class, dropout).to(device)
     elif architecture == 'GCN':
         return GCN(num_features, nhid, num_class, dropout).to(device)
     elif architecture == 'GAT':
-        return GAT(num_features, nhid, num_class, dropout).to(device)
+        num_heads = kwargs.get('num_heads', 8)  # Provide a default value if not specified
+        num_layers = kwargs.get('num_layers', 1)  # Provide a default value if not specified
+        return GAT(num_features, nhid, num_class, dropout, num_heads=num_heads, num_layers=num_layers).to(device)
     else:
         raise ValueError("Unsupported architecture specified")
 
