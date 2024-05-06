@@ -17,26 +17,18 @@ from src.processing.gnn.graph_data_utils import load_heloc
 from src.training.train_evaluate import train_and_evaluate
 from src.training.evaluate import evaluate
 
-def get_model(architecture, num_features, nhid, num_class, dropout, device, **kwargs):
-    if architecture == 'GIN':
-        return GIN(num_features, nhid, num_class, dropout).to(device)
-    elif architecture == 'GCN':
-        return GCN(num_features, nhid, num_class, dropout).to(device)
-    elif architecture == 'GAT':
-        num_heads = kwargs.get('num_heads', 8)  # Provide a default value if not specified
-        num_layers = kwargs.get('num_layers', 1)  # Provide a default value if not specified
-        return GAT(num_features, nhid, num_class, dropout, num_heads=num_heads, num_layers=num_layers).to(device)
-    else:
-        raise ValueError("Unsupported architecture specified")
+def get_model(nfeat, nhid, nclass, dropout, device):
+    return GIN(nfeat, nhid, nclass, dropout).to(device)
 
-def train_optimize_model(architecture, features, adj, labels, num_class, device, num_epochs=1500, n_splits=2):
+
+def train_optimize_model(features, adj, labels, num_class, device, num_epochs=1000, n_splits=2):
     num_features = features.shape[1]
     edge_index = convert.from_scipy_sparse_matrix(adj)[0].to(device)
     features = features.to(device)
     labels = labels.to(device)
 
     kf = KFold(n_splits=n_splits, shuffle=True)
-    study_name = f"{architecture}_fico_optimization_study"
+    study_name = f"GIN_fico_optimization_study"
     storage = f"./models/saved_scores/{study_name}.pkl"
 
     # Load or create a new study
@@ -56,9 +48,9 @@ def train_optimize_model(architecture, features, adj, labels, num_class, device,
         lr = trial.suggest_float('lr', 1e-4, 1e-2)
         weight_decay = trial.suggest_float('weight_decay', 1e-6, 1e-2)
 
-        model = get_model(architecture, num_features, nhid, num_class, dropout, device)
+        model = get_model(num_features, nhid, num_class, dropout, device)
         optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-        auc_roc_test = train_and_evaluate(model, optimizer, features, edge_index, labels, idx_train, idx_test, device, num_epochs, model.__class__.__name__, tuning=True)
+        auc_roc_test = train_and_evaluate(model, optimizer, features, edge_index, labels, idx_train, idx_test, device, num_epochs, tuning=True)
         
         return auc_roc_test * 2 - 1  # Convert AUC to Gini
 
@@ -78,8 +70,8 @@ def train_optimize_model(architecture, features, adj, labels, num_class, device,
     print('Best Gini:', best_trial.value)
     return best_trial.params
 
-def retrieve_model(architecture):
-    study_name = F"{architecture}_fico4_optimization_study"
+def retrieve_model():
+    study_name = "GIN_fico_optimization_study"
     storage = f"./models/saved_scores/{study_name}.pkl"
 
     with open(storage, "rb") as f:
@@ -90,16 +82,28 @@ def retrieve_model(architecture):
 
     return best_params
 
-def evaluate_saved_model(architecture, features, adj, labels, idx_test, num_class, device, plot_loss=False):
-    print(f"Loading model weights for architecture: {architecture}")
+def evaluate_saved_model(features, adj, labels, idx_test, num_class, device, plot_loss=False):
+    print("Loading model weights for GIN architecture")
 
-    model_path = f'./models/weights/{architecture}_weights.pth'
+    model_path = f'./models/weights/GIN_weights.pth'
     try:
-        checkpoint = torch.load(model_path)
+        # Load the model checkpoint
+        checkpoint = torch.load(model_path, map_location=device)
+
+        # Extract the configuration from the checkpoint
         config = checkpoint['config']
-        # Initialize the model using the saved configuration
-        model = GIN(nfeat=config['nfeat'], nhid=config['nhid'], nclass=config['nclass'], dropout=config['dropout']).to(device)
+        config['nclass'] = num_class
+
+        # Initialize the model using the configuration
+        model = get_model(device=device, **config)
+
+        # Load the model weights
         model.load_state_dict(checkpoint['state_dict'])
+
+        if model.fc.weight.shape[0] != num_class:
+            raise ValueError(f"Number of output classes in the checkpoint ({model.fc.weight.shape[0]}) "
+                             f"does not match the expected number of classes ({num_class})")
+
         print("Model loaded successfully.")
 
         if plot_loss:
@@ -110,21 +114,23 @@ def evaluate_saved_model(architecture, features, adj, labels, idx_test, num_clas
             plt.legend()
             plt.title("Loss over epochs")
             plt.show()
+
     except Exception as e:
         print(f"Failed to load the model with error: {e}")
         return None
-
+    
+    # Evaluate the model
     model.eval()
+    
     edge_index = convert.from_scipy_sparse_matrix(adj)[0].to(device)
     _, auc_roc_val, f1_val = evaluate(model, features, edge_index, labels, idx_test, device)
-    
+
     return auc_roc_val, f1_val
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train or retrieve GNN model.')
     parser.add_argument('--mode', choices=['train', 'retrieve'], help='Mode to execute')
-    parser.add_argument('--arch', choices=['GIN', 'GCN', 'GAT'], help='Architecture to use')
     args = parser.parse_args()
 
     predict_attr = "RiskPerformance"
@@ -134,12 +140,11 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     if args.mode == 'train':
-        best_params = train_optimize_model(args.arch, features, adj, labels, num_class, device)
+        best_params = train_optimize_model(features, adj, labels, num_class, device)
     elif args.mode == 'retrieve':
-        best_params = retrieve_model(args.arch)  # This function needs to be updated similarly to handle different architectures
+        best_params = retrieve_model()
         if best_params:
             result = evaluate_saved_model(
-                architecture=args.arch,
                 features=features,
                 adj=adj,
                 labels=labels,
