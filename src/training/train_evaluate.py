@@ -40,6 +40,7 @@ def train_and_evaluate(model, optimizer, features, edge_index, labels, idx_train
                 'num_heads': getattr(model, 'num_heads', None),
                 'num_layers': getattr(model, 'num_layers', None)
             }
+            
             # Clean config by removing None values
             config = {k: v for k, v in config.items() if v is not None}
             torch.save({

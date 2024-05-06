@@ -29,7 +29,7 @@ def get_model(architecture, num_features, nhid, num_class, dropout, device, **kw
     else:
         raise ValueError("Unsupported architecture specified")
 
-def train_optimize_model(architecture, features, adj, labels, num_class, device, num_epochs=1500, n_splits=2):
+def train_optimize_model(architecture, features, adj, labels, num_class, device, num_epochs=1000, n_splits=2):
     num_features = features.shape[1]
     edge_index = convert.from_scipy_sparse_matrix(adj)[0].to(device)
     features = features.to(device)
@@ -79,7 +79,7 @@ def train_optimize_model(architecture, features, adj, labels, num_class, device,
     return best_trial.params
 
 def retrieve_model(architecture):
-    study_name = F"{architecture}_fico4_optimization_study"
+    study_name = F"{architecture}_fico_optimization_study"
     storage = f"./models/saved_scores/{study_name}.pkl"
 
     with open(storage, "rb") as f:
@@ -95,10 +95,29 @@ def evaluate_saved_model(architecture, features, adj, labels, idx_test, num_clas
 
     model_path = f'./models/weights/{architecture}_weights.pth'
     try:
-        checkpoint = torch.load(model_path)
-        config = checkpoint['config']
-        # Initialize the model using the saved configuration
-        model = GIN(nfeat=config['nfeat'], nhid=config['nhid'], nclass=config['nclass'], dropout=config['dropout']).to(device)
+        # Load the model checkpoint
+        with open(model_path, 'rb') as f:
+            checkpoint = torch.load(f)
+            config = checkpoint['config']
+
+        # Update the configuration with necessary information
+        config['num_features'] = features.shape[1]
+        config['device'] = device
+        config['num_class'] = num_class
+
+        # Check if nhid is missing and handle it
+        if 'nhid' not in config:
+            if architecture == 'GIN':
+                # For GIN, nhid is stored differently
+                config['nhid'] = checkpoint['config'].get('nhid', None)
+            else:
+                print("Error: 'nhid' missing in the configuration.")
+                return None
+
+        # Initialize the model using the configuration
+        model = get_model(architecture, **config)
+
+        # Load the model weights
         model.load_state_dict(checkpoint['state_dict'])
         print("Model loaded successfully.")
 
@@ -110,15 +129,23 @@ def evaluate_saved_model(architecture, features, adj, labels, idx_test, num_clas
             plt.legend()
             plt.title("Loss over epochs")
             plt.show()
+
+        # Evaluate the model
+        model.eval()
+        
+        # Ensure proper edge_index format
+        if isinstance(adj, tuple):
+            edge_index = adj[0].to(device)
+        else:
+            edge_index = torch.tensor(adj.nonzero(), dtype=torch.long, device=device).t()
+            
+        _, auc_roc_val, f1_val = evaluate(model, features, edge_index, labels, idx_test, device)
+        
+        return auc_roc_val, f1_val
+
     except Exception as e:
         print(f"Failed to load the model with error: {e}")
         return None
-
-    model.eval()
-    edge_index = convert.from_scipy_sparse_matrix(adj)[0].to(device)
-    _, auc_roc_val, f1_val = evaluate(model, features, edge_index, labels, idx_test, device)
-    
-    return auc_roc_val, f1_val
 
 
 if __name__ == "__main__":
@@ -136,7 +163,7 @@ if __name__ == "__main__":
     if args.mode == 'train':
         best_params = train_optimize_model(args.arch, features, adj, labels, num_class, device)
     elif args.mode == 'retrieve':
-        best_params = retrieve_model(args.arch)  # This function needs to be updated similarly to handle different architectures
+        best_params = retrieve_model(args.arch)
         if best_params:
             result = evaluate_saved_model(
                 architecture=args.arch,
