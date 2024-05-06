@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from .train import train
 from .evaluate import evaluate
 
-def train_and_evaluate(model, optimizer, features, edge_index, labels, idx_train, idx_test, device, num_epochs, architecture, plot_loss=False, save_plot=False, tuning=False):
+def train_and_evaluate(model, optimizer, features, edge_index, labels, idx_train, idx_test, device, num_epochs, plot_loss=False, save_plot=False, tuning=False):
     train_losses = []
     test_losses = []
     best_auc = float('-inf')
@@ -31,18 +31,14 @@ def train_and_evaluate(model, optimizer, features, edge_index, labels, idx_train
         # Save the model if the current AUC is the best
         if auc_roc_val > best_auc:
             best_auc = auc_roc_val
-            save_path = f'./models/weights/{architecture}_weights.pth'
+            save_path = f'./models/weights/GIN_weights.pth'
             config = {
-                'nhid': getattr(model, 'nhid', None),
-                'dropout': getattr(model, 'dropout', 0.5 if isinstance(model.dropout, float) else model.dropout.p),
+                'nhid': model.mlp1[0].out_features,
+                'dropout': model.dropout.p,
                 'nfeat': features.shape[1],
-                'nclass': labels.max().item() + 1,
-                'num_heads': getattr(model, 'num_heads', None),
-                'num_layers': getattr(model, 'num_layers', None)
+                'nclass': labels.max().item() + 1
             }
             
-            # Clean config by removing None values
-            config = {k: v for k, v in config.items() if v is not None}
             torch.save({
                 'state_dict': model.state_dict(),
                 'config': config,
@@ -70,7 +66,7 @@ def train_and_evaluate(model, optimizer, features, edge_index, labels, idx_train
         plt.legend()
         plt.title("Loss over epochs")
         if save_plot:
-            plt.savefig(f'{architecture}_loss_plot.png')
+            plt.savefig(f'GIN_loss_plot.png')
         plt.show()
 
     return auc_roc_test if tuning else (auc_roc_test, probs_gnn_array, f1_test)
