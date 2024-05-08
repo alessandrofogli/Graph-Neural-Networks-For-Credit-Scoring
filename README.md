@@ -7,22 +7,19 @@ This repository contains the implementation of a graph neural network (GNN) mode
 The repository is organized as follows:
 
 - `data/`: Contains raw and processed datasets.
-- `models/`: Includes the model architectures (e.g., GCN, GIN).
-- `output/`: Stores model weights and performance scores.
+- `models/`: Includes the model architectures (GCN, GIN, GAT), model weights and performance scores.
 - `src/`: Source code for preprocessing, training, and utility functions.
 - `notebooks/`: Jupyter notebooks for exploratory data analysis and testing.
-- `tests/`: Unit tests for the modules.
-- `docs/`: Additional documentation for the project.
 
 ## Getting Started
 
 ### Prerequisites
 
-Ensure you have Python 3.8+ installed. It's recommended to use a virtual environment:
+Ensure you have Python 3.8 installed. It's recommended to use a virtual environment:
 
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+conda create -n myenv python=3.8
+conda activate myenv
 ```
 
 ### Installation
@@ -31,47 +28,56 @@ Install the required dependencies:
 ```bash
 pip install -r requirements.txt
 ```
+## Available Models
 
-### Running the Model
-Navigate to the src/ directory and run:
+The module supports the following GNN architectures:
+- **GIN**: Graph Isomorphism Network
+- **GCN**: Graph Convolutional Network
+- **GAT**: Graph Attention Network
 
+## Usage
+
+### Command Line Arguments
+
+The main script is designed to be run from the command line with the following arguments:
+
+- `--mode`: Specifies the mode of operation. It can be either `train` or `retrieve`.
+  - `train`: Trains a new model using the provided data and saves the optimization study results.
+  - `retrieve`: Retrieves the best parameters from a previously saved optimization study and evaluates the model.
+- `--arch`: Specifies the architecture of the GNN to use. Options are `GIN`, `GCN`, and `GAT`. Default is `GIN`.
+
+### Examples
+
+1. **Training a Model**:
 ```bash
-python main.py
+python main.py --mode train --arch GAT
 ```
 
-### Usage
-To run the training process and evaluate the model, use the following command:
-
-```bash
-python src/main.py --model gcn --epochs 50 --batch-size 32
-```
-
+    │   
 
 ```
 Exploring-the-potential-of-Graph-Neural-Networks-for-Credit-Scoring/
 │
 ├── data/
-│   ├── raw/
-│   └── processed/
+│   ├── credit/
+│   ├── FICO/
+│   └── german/
 │
 ├── models/
 │   ├── __init__.py
-│   ├── gnn/
+│   ├── arch/
 │   │   ├── __init__.py
-│   │   ├── gcn_model.py
-│   │   ├── gin_model.py
-│   │   └── ...             # Other GNN model scripts
-│   └── logistic_regression/
-│       ├── __init__.py
-│       └── logistic_model.py
-│
-├── output/
-│   ├── weights/
-│   └── scores/
+│   │   ├── gcn.py
+│   │   ├── gin.py
+│   │   └── gat.py           
+│   ├── saved_scores/
+│   │       ├── __init__.py
+│   │       └── study.pkl  # Artifact of the hyperparameter tuning trials, parameters and performance metrics
+│   └── weights/
+│           └── archname_WEIGHTS.pth  # Artifact of model's learned weights 
 │
 ├── src/
 │   ├── __init__.py
-│   ├── main.py              # Main script to run models
 │   ├── config.py            # Configuration settings for the project
 │   ├── preprocessing/
 │   │   ├── gnn/
@@ -79,23 +85,23 @@ Exploring-the-potential-of-Graph-Neural-Networks-for-Credit-Scoring/
 │   │   └── logistic_regression/
 │   │       ├── correlation_feature_selector.py   # select uncorrelated features based on Gini
 │   │       └── woe_processing.py   # WeightOfEvidence trasnformation
+│   │
 │   ├── training/
 │   │   ├── __init__.py
 │   │   ├── train.py
 │   │   ├── evaluate.py
 │   │   └── train_evaluate.py
-│   ├── utils/
-│   │   ├── __init__.py
-│   │   └── data_utils.py   # Utilities to handle and load graph data
+│   │
 │   └── visualization/
 │       ├── __init__.py
 │       └── plot_cap_curve.py
 │
 ├── notebooks/
-│   └── exploratory_analysis.ipynb  # Jupyter notebook for exploration and testing
+│   └── graph_visualization.ipynb.ipynb  # Jupyter notebook for exploration and testing
 │
 ├── requirements.txt
 ├── .gitignore
 ├── README.md
-└── setup.py
+├── setup.py          # Seeds setting
+└── main.py           # Main script to run models
 ```
