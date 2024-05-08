@@ -9,13 +9,11 @@ import argparse
 from sklearn.model_selection import KFold
 import matplotlib.pyplot as plt
 
-from models.arch.gin import GIN
-from models.arch.gat import GAT 
-from models.arch.gcn import GCN 
+from models.arch import GIN, GCN, GAT
 
 from src.processing.gnn.graph_data_utils import load_heloc
-from src.training.evaluate import evaluate
-from src.training.train_evaluate import train_and_evaluate
+from src.training import evaluate, train_and_evaluate
+
 
 def get_model(arch, nfeat, nhid, dropout, device, num_heads=None, num_layers=None):
     if arch == 'GIN' or arch == 'GCN':
