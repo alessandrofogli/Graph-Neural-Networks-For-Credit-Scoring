@@ -9,9 +9,9 @@ import argparse
 from sklearn.model_selection import KFold
 import matplotlib.pyplot as plt
 
-from models.gin import GIN
-from models.gat import GAT 
-from models.gcn import GCN 
+from models.arch.gin import GIN
+from models.arch.gat import GAT 
+from models.arch.gcn import GCN 
 
 from src.processing.gnn.graph_data_utils import load_heloc
 from src.training.evaluate import evaluate
