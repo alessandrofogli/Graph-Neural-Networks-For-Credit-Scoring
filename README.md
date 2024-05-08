@@ -62,6 +62,7 @@ Here an example of node exploration and visualization of a random node within th
 ![image](https://drive.google.com/uc?export=view&id=1MzYSArbVbwc9o34fMKVRS0fE6Dml40gj)
 
 
+## Project Structure in Depth
 
 ```
 Exploring-the-potential-of-Graph-Neural-Networks-for-Credit-Scoring/
