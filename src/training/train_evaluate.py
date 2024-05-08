@@ -19,6 +19,9 @@ def train_and_evaluate(model, optimizer, features, edge_index, labels, idx_train
     if isinstance(idx_test, np.ndarray):
         idx_test = torch.tensor(idx_test, dtype=torch.long, device=device)
     
+    # Ensure labels are a tensor on the correct device
+    labels = torch.as_tensor(labels, dtype=torch.long, device=device)
+    
     epoch_iterator = tqdm(range(num_epochs + 1), desc='Epochs', unit='epoch')
     
     for epoch in epoch_iterator:
@@ -31,20 +34,23 @@ def train_and_evaluate(model, optimizer, features, edge_index, labels, idx_train
         # Save the model if the current AUC is the best
         if auc_roc_val > best_auc:
             best_auc = auc_roc_val
-            save_path = f'./models/weights/GIN_weights.pth'
+            save_path = f'./models/weights/{args.arch}_weights.pth'
             config = {
-                'nhid': model.mlp1[0].out_features,
-                'dropout': model.dropout.p,
-                'nfeat': features.shape[1],
-                'nclass': labels.max().item() + 1
+                'nhid': model.nhid,
+                'nfeat': model.nfeat,
+                'dropout': model.dropout
             }
-            
+            if args.arch == 'GAT':
+                config['num_heads'] = model.num_heads
+                config['num_layers'] = model.num_layers
+
             torch.save({
                 'state_dict': model.state_dict(),
                 'config': config,
                 'train_losses': train_losses,
                 'test_losses': test_losses
             }, save_path)
+
         # Update progress bar with loss information
         if epoch % 100 == 0:
             epoch_iterator.set_postfix({'Train Loss': f"{loss_train:.4f}", 'Val Loss': f"{loss_test:.4f}", 'Val AUC': f"{auc_roc_val:.4f}"})
@@ -57,6 +63,7 @@ def train_and_evaluate(model, optimizer, features, edge_index, labels, idx_train
     preds = (output.squeeze() > 0).type_as(labels)
     f1_test = f1_score(labels.cpu().numpy()[idx_test.cpu().numpy()], preds[idx_test.cpu().numpy()])
     auc_roc_test = roc_auc_score(labels.cpu().numpy()[idx_test.cpu().numpy()], probs_gnn_array[idx_test.cpu().numpy()][:, 1])
+
 
     if plot_loss:
         plt.plot(train_losses, label='Training Loss', color='blue')
