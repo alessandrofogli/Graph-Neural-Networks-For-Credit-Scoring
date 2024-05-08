@@ -60,7 +60,7 @@ def train_optimize_model(features, adj, labels, device, num_epochs=100, n_splits
             model = get_model(args.arch, num_features, nhid, dropout, device)
 
         optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-        auc_roc_test = train_and_evaluate(model, optimizer, features, edge_index, labels, idx_train, idx_test, device, num_epochs, tuning=True)
+        auc_roc_test = train_and_evaluate(args.arch, model, optimizer, features, edge_index, labels, idx_train, idx_test, device, num_epochs, tuning=True)
         
         return auc_roc_test * 2 - 1  # Convert AUC to Gini
 
