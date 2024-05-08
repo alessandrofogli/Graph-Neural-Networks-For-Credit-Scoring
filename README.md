@@ -59,7 +59,8 @@ You can explore the dataset with the notebook located in `notebooks/graph_visual
 
 Here an example of node exploration and visualization of a random node within the Graph Network:
 
-![Alt text](https://drive.google.com/file/d/1MzYSArbVbwc9o34fMKVRS0fE6Dml40gj/view?usp=share_link "Graph Network Node visualization")
+
+![Graph Network Node visualization](![image](https://drive.google.com/uc?export=view&id=1MzYSArbVbwc9o34fMKVRS0fE6Dml40gj))
 
 
 
