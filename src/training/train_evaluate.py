@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 from .train import train
 from .evaluate import evaluate
 
-def train_and_evaluate(model, optimizer, features, edge_index, labels, idx_train, idx_test, device, num_epochs, plot_loss=False, save_plot=False, tuning=False):
+
+def train_and_evaluate(arch, model, optimizer, features, edge_index, labels, idx_train, idx_test, device, num_epochs, plot_loss=False, save_plot=False, tuning=False):
     train_losses = []
     test_losses = []
     best_auc = float('-inf')
@@ -34,13 +35,13 @@ def train_and_evaluate(model, optimizer, features, edge_index, labels, idx_train
         # Save the model if the current AUC is the best
         if auc_roc_val > best_auc:
             best_auc = auc_roc_val
-            save_path = f'./models/weights/{args.arch}_weights.pth'
+            save_path = f'./models/weights/{arch}_weights.pth'
             config = {
                 'nhid': model.nhid,
                 'nfeat': model.nfeat,
                 'dropout': model.dropout
             }
-            if args.arch == 'GAT':
+            if arch == 'GAT':
                 config['num_heads'] = model.num_heads
                 config['num_layers'] = model.num_layers
 
