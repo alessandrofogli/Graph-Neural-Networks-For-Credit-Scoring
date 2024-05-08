@@ -7,28 +7,35 @@ import numpy as np
 from torch_geometric.utils import convert
 import argparse
 from sklearn.model_selection import KFold
-import statistics
 import matplotlib.pyplot as plt
 
 from models.gin import GIN
-from models.gcn import GCN  
-from models.gat import GAT
+from models.gat import GAT 
+from models.gcn import GCN 
+
 from src.processing.gnn.graph_data_utils import load_heloc
-from src.training.train_evaluate import train_and_evaluate
 from src.training.evaluate import evaluate
+from src.training.train_evaluate import train_and_evaluate
 
-def get_model(nfeat, nhid, nclass, dropout, device):
-    return GIN(nfeat, nhid, nclass, dropout).to(device)
+def get_model(arch, nfeat, nhid, dropout, device, num_heads=None, num_layers=None):
+    if arch == 'GIN' or arch == 'GCN':
+        if arch == 'GIN':
+            return GIN(nfeat, nhid, dropout).to(device)
+        elif arch == 'GCN':
+            return GCN(nfeat, nhid, dropout).to(device)
+    elif arch == 'GAT':
+        return GAT(nfeat, nhid, dropout, num_heads, num_layers).to(device)
+    else:
+        raise ValueError("Unsupported architecture specified!")
 
-
-def train_optimize_model(features, adj, labels, num_class, device, num_epochs=1000, n_splits=2):
+def train_optimize_model(features, adj, labels, device, num_epochs=100, n_splits=2):
     num_features = features.shape[1]
     edge_index = convert.from_scipy_sparse_matrix(adj)[0].to(device)
     features = features.to(device)
     labels = labels.to(device)
 
     kf = KFold(n_splits=n_splits, shuffle=True)
-    study_name = f"GIN_fico_optimization_study"
+    study_name = f"{args.arch}_fico_optimization_study"  # Updated study name to reflect GAT usage
     storage = f"./models/saved_scores/{study_name}.pkl"
 
     # Load or create a new study
@@ -40,15 +47,20 @@ def train_optimize_model(features, adj, labels, num_class, device, num_epochs=10
         study = optuna.create_study(direction='maximize', study_name=study_name)
         print("Created new study.")
 
-
     # Define the objective function
     def objective(trial):
         dropout = trial.suggest_float('dropout', 0.2, 0.6)
         nhid = trial.suggest_int('nhid', 10, 60)
         lr = trial.suggest_float('lr', 1e-4, 1e-2)
         weight_decay = trial.suggest_float('weight_decay', 1e-6, 1e-2)
+        
+        if args.arch == 'GAT':
+            num_heads = trial.suggest_categorical('num_heads', [1, 2, 4])
+            num_layers = trial.suggest_int('num_layers', 1, 3)
+            model = get_model(args.arch, num_features, nhid, dropout, device, num_heads, num_layers)
+        else:
+            model = get_model(args.arch, num_features, nhid, dropout, device)
 
-        model = get_model(num_features, nhid, num_class, dropout, device)
         optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
         auc_roc_test = train_and_evaluate(model, optimizer, features, edge_index, labels, idx_train, idx_test, device, num_epochs, tuning=True)
         
@@ -70,8 +82,9 @@ def train_optimize_model(features, adj, labels, num_class, device, num_epochs=10
     print('Best Gini:', best_trial.value)
     return best_trial.params
 
+
 def retrieve_model():
-    study_name = "GIN_fico_optimization_study"
+    study_name = f"{args.arch}_fico_optimization_study"
     storage = f"./models/saved_scores/{study_name}.pkl"
 
     with open(storage, "rb") as f:
@@ -82,28 +95,15 @@ def retrieve_model():
 
     return best_params
 
-def evaluate_saved_model(features, adj, labels, idx_test, num_class, device, plot_loss=False):
-    print("Loading model weights for GIN architecture")
-
-    model_path = f'./models/weights/GIN_weights.pth'
+def evaluate_saved_model(features, adj, labels, idx_test, device, plot_loss=False):
+    print(f"Loading model weights for {args.arch} architecture")
+    model_path = f'./models/weights/{args.arch}_weights.pth'
     try:
-        # Load the model checkpoint
         checkpoint = torch.load(model_path, map_location=device)
-
-        # Extract the configuration from the checkpoint
         config = checkpoint['config']
-        config['nclass'] = num_class
 
-        # Initialize the model using the configuration
-        model = get_model(device=device, **config)
-
-        # Load the model weights
+        model = get_model(args.arch, device=device, **config)
         model.load_state_dict(checkpoint['state_dict'])
-
-        if model.fc.weight.shape[0] != num_class:
-            raise ValueError(f"Number of output classes in the checkpoint ({model.fc.weight.shape[0]}) "
-                             f"does not match the expected number of classes ({num_class})")
-
         print("Model loaded successfully.")
 
         if plot_loss:
@@ -114,33 +114,30 @@ def evaluate_saved_model(features, adj, labels, idx_test, num_class, device, plo
             plt.legend()
             plt.title("Loss over epochs")
             plt.show()
-
     except Exception as e:
         print(f"Failed to load the model with error: {e}")
         return None
-    
-    # Evaluate the model
+
     model.eval()
-    
     edge_index = convert.from_scipy_sparse_matrix(adj)[0].to(device)
     _, auc_roc_val, f1_val = evaluate(model, features, edge_index, labels, idx_test, device)
-
     return auc_roc_val, f1_val
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train or retrieve GNN model.')
     parser.add_argument('--mode', choices=['train', 'retrieve'], help='Mode to execute')
+    parser.add_argument('--arch', choices=['GIN', 'GCN', 'GAT'], help='Model architecture to use', default='GIN')
+
     args = parser.parse_args()
 
     predict_attr = "RiskPerformance"
     path_heloc = "./data/FICO/"
     adj, features, labels, idx_train, idx_test = load_heloc('heloc', predict_attr, path=path_heloc)
-    num_class = labels.unique().shape[0] - 1
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     if args.mode == 'train':
-        best_params = train_optimize_model(features, adj, labels, num_class, device)
+        best_params = train_optimize_model(features, adj, labels, device)
     elif args.mode == 'retrieve':
         best_params = retrieve_model()
         if best_params:
@@ -149,7 +146,6 @@ if __name__ == "__main__":
                 adj=adj,
                 labels=labels,
                 idx_test=idx_test,
-                num_class=num_class,
                 device=device,
                 plot_loss=True
             )
