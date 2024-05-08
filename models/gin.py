@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch_geometric.nn import GINConv
 
 class GIN(nn.Module):
-    def __init__(self, nfeat, nhid, nclass, dropout):
+    def __init__(self, nfeat, nhid, dropout):
         super(GIN, self).__init__()
 
         self.mlp1 = nn.Sequential(
@@ -17,8 +17,10 @@ class GIN(nn.Module):
             nn.BatchNorm1d(nhid),
         )
         self.conv1 = GINConv(self.mlp1)
-        self.fc = nn.Linear(nhid, nclass)
-        self.dropout = nn.Dropout(dropout)
+        self.fc = nn.Linear(nhid, 1)  # Assuming binary classification
+        self.dropout = dropout  # Storing dropout rate
+        self.nfeat = nfeat
+        self.nhid = nhid
 
         self.init_weights()
 
@@ -31,6 +33,6 @@ class GIN(nn.Module):
 
     def forward(self, x, edge_index):
         x = self.conv1(x, edge_index)
-        x = self.dropout(x)
+        x = F.dropout(x, p=self.dropout, training=self.training)  # Using dropout functionally
         x = self.fc(x)
         return x
