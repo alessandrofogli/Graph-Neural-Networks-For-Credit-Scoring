@@ -52,8 +52,7 @@ The main script is designed to be run from the command line with the following a
 ```bash
 python main.py --mode train --arch GAT
 ```
-
-    │   
+  
 
 ```
 Exploring-the-potential-of-Graph-Neural-Networks-for-Credit-Scoring/
