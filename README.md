@@ -39,7 +39,7 @@ The module supports the following GNN architectures:
 
 ### Command Line Arguments
 
-The main script is designed to be run from the command line with the following arguments:
+The main script is `main.py` and it's designed to be run from the command line with the following arguments:
 
 - `--mode`: Specifies the mode of operation. It can be either `train` or `retrieve`.
   - `train`: Trains a new model using the provided data and saves the optimization study results.
@@ -52,7 +52,17 @@ The main script is designed to be run from the command line with the following a
 ```bash
 python main.py --mode train --arch GAT
 ```
-  
+
+### Graph Exploration
+
+You can explore the dataset with the notebook located in `notebooks/graph_visualization.ipynb` where you can visualize the full graph network or a single node and its connection, as well as check some statistics.
+
+Here an example of node exploration and visualization of a random node within the Graph Network:
+
+![image](https://drive.google.com/uc?export=view&id=1MzYSArbVbwc9o34fMKVRS0fE6Dml40gj)
+
+
+## Project Structure in Depth
 
 ```
 Exploring-the-potential-of-Graph-Neural-Networks-for-Credit-Scoring/
